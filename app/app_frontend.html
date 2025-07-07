@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OVOD Real-time Object Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .content {
+            display: flex;
+            min-height: 600px;
+        }
+        
+        .video-section {
+            flex: 2;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .controls-section {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 20px;
+            border-left: 1px solid #ddd;
+        }
+        
+        #videoCanvas {
+            width: 100%;
+            max-width: 800px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #000;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+        
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .prompt-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        #promptText {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .prompt-list {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        
+        .prompt-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 5px;
+            margin: 2px 0;
+            background: white;
+            border-radius: 3px;
+            border: 1px solid #eee;
+        }
+        
+        .prompt-text {
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .stats {
+            font-family: monospace;
+            font-size: 12px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-line;
+        }
+        
+        .slider-group {
+            margin: 10px 0;
+        }
+        
+        .slider-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .slider {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .slider-value {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 OVOD Real-time Object Detection</h1>
+            <p>Open Vocabulary Object Detection & Segmentation</p>
+        </div>
+        
+        <div class="content">
+            <div class="video-section">
+                <canvas id="videoCanvas"></canvas>
+                <video id="hiddenVideo" style="display: none;" autoplay muted></video>
+            </div>
+            
+            <div class="controls-section">
+                <!-- Connection Status -->
+                <div class="control-group">
+                    <h3>📡 Connection</h3>
+                    <div id="connectionStatus" class="status disconnected">
+                        Disconnected
+                    </div>
+                    <button id="startBtn" class="btn btn-success" style="width: 100%;">
+                        Start Camera & Connect
+                    </button>
+                </div>
+                
+                <!-- Mode Selection -->
+                <div class="control-group">
+                    <h3>🔧 Mode</h3>
+                    <div class="mode-selector">
+                        <button class="mode-btn active" data-mode="detection">Detection</button>
+                    </div>
+                </div>
+                
+                <!-- Text Prompts -->
+                <div class="control-group">
+                    <h3>📝 Text Prompts</h3>
+                    <div class="prompt-input">
+                        <input type="text" id="promptText" placeholder="Enter object to detect (e.g., 'person', 'car')" maxlength="50">
+                        <button id="addPromptBtn" class="btn btn-primary">Add</button>
+                    </div>
+                    <div id="promptList" class="prompt-list">
+                        <div style="text-align: center; color: #666; font-style: italic;">
+                            No prompts added. Add some to start detection!
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Settings -->
+                <div class="control-group">
+                    <h3>⚙️ Settings</h3>
+                    
+                    <div class="slider-group">
+                        <label for="confidenceSlider">Confidence Threshold</label>
+                        <input type="range" id="confidenceSlider" class="slider" 
+                               min="0.01" max="0.99" step="0.01" value="0.10">
+                        <div class="slider-value" id="confidenceValue">0.10</div>
+                    </div>
+                    
+                    <div class="slider-group">
+                        <label for="similaritySlider">Similarity Threshold</label>
+                        <input type="range" id="similaritySlider" class="slider" 
+                               min="0.01" max="0.99" step="0.01" value="0.25">
+                        <div class="slider-value" id="similarityValue">0.25</div>
+                    </div>
+                    
+                    <div style="margin: 10px 0;">
+                        <label>
+                            <input type="checkbox" id="filteringCheckbox" checked> 
+                            Apply Filtering (NMS/Merging)
+                        </label>
+                    </div>
+                    
+                    <div style="margin: 10px 0;">
+                        <label>
+                            <input type="checkbox" id="trackingCheckbox" checked> 
+                            Enable Multi-Object Tracking
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Statistics -->
+                <div class="control-group">
+                    <h3>📊 Performance</h3>
+                    <div id="stats" class="stats">
+                        Waiting for data...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class OVODApp {
+            constructor() {
+                this.video = document.getElementById('hiddenVideo');
+                this.canvas = document.getElementById('videoCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.ws = null;
+                this.isRunning = false;
+                this.currentPrompts = [];
+                this.currentMode = 'detection';
+                this.animationId = null;
+                this.lastResults = null;
+                this.stats = {
+                    fps: 0,
+                    processingTime: 0,
+                    detectionCount: 0,
+                    frameCount: 0
+                };
+                
+                this.setupEventListeners();
+                this.updateUI();
+            }
+            
+            setupEventListeners() {
+                // Start button
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.toggleCamera();
+                });
+                
+                // Mode selection
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.setMode(e.target.dataset.mode);
+                    });
+                });
+                
+                // Prompt management
+                document.getElementById('addPromptBtn').addEventListener('click', () => {
+                    this.addPrompt();
+                });
+                
+                document.getElementById('promptText').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.addPrompt();
+                    }
+                });
+                
+                // Settings
+                const confidenceSlider = document.getElementById('confidenceSlider');
+                const similaritySlider = document.getElementById('similaritySlider');
+                const filteringCheckbox = document.getElementById('filteringCheckbox');
+                
+                confidenceSlider.addEventListener('input', () => {
+                    document.getElementById('confidenceValue').textContent = confidenceSlider.value;
+                    this.updateSettings();
+                });
+                
+                similaritySlider.addEventListener('input', () => {
+                    document.getElementById('similarityValue').textContent = similaritySlider.value;
+                    this.updateSettings();
+                });
+                
+                filteringCheckbox.addEventListener('change', () => {
+                    this.updateSettings();
+                });
+            }
+            
+            async toggleCamera() {
+                if (!this.isRunning) {
+                    await this.startCamera();
+                } else {
+                    this.stopCamera();
+                }
+            }
+            
+            async startCamera() {
+                try {
+                    // Request camera access
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            width: 640, 
+                            height: 480,
+                            frameRate: 30
+                        } 
+                    });
+                    
+                    this.video.srcObject = stream;
+                    await this.video.play();
+                    
+                    // Set canvas size
+                    this.canvas.width = this.video.videoWidth;
+                    this.canvas.height = this.video.videoHeight;
+                    
+                    // Connect WebSocket
+                    await this.connectWebSocket();
+                    
+                    // Start processing loop
+                    this.isRunning = true;
+                    this.processFrames();
+                    
+                    // Update UI
+                    document.getElementById('startBtn').textContent = 'Stop Camera';
+                    document.getElementById('startBtn').className = 'btn btn-danger';
+                    
+                } catch (error) {
+                    alert('Camera access denied or WebSocket connection failed: ' + error.message);
+                }
+            }
+            
+            stopCamera() {
+                this.isRunning = false;
+                
+                // Stop video stream
+                if (this.video.srcObject) {
+                    this.video.srcObject.getTracks().forEach(track => track.stop());
+                    this.video.srcObject = null;
+                }
+                
+                // Close WebSocket
+                if (this.ws) {
+                    this.ws.close();
+                    this.ws = null;
+                }
+                
+                // Stop animation
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+                
+                // Update UI
+                document.getElementById('startBtn').textContent = 'Start Camera & Connect';
+                document.getElementById('startBtn').className = 'btn btn-success';
+                this.updateConnectionStatus(false);
+            }
+            
+            async connectWebSocket() {
+                return new Promise((resolve, reject) => {
+                    const wsUrl = `ws://${window.location.host}/ws`;
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        this.updateConnectionStatus(true);
+                        resolve();
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'results') {
+                            this.handleResults(data.data);
+                        }
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.updateConnectionStatus(false);
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        reject(error);
+                    };
+                    
+                    // Connection timeout
+                    setTimeout(() => {
+                        if (this.ws.readyState !== WebSocket.OPEN) {
+                            reject(new Error('WebSocket connection timeout'));
+                        }
+                    }, 5000);
+                });
+            }
+            
+            processFrames() {
+                if (!this.isRunning) {
+                    return;
+                }
+                
+                // Always draw the current frame with last results (if any)
+                this.drawResults();
+                
+                // Only send frame to server if we have prompts and WebSocket is connected
+                if (this.currentPrompts.length > 0 && this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.sendFrame();
+                    // Don't continue animation here - wait for results to come back
+                } else {
+                    // If no prompts or no connection, just continue drawing frames
+                    this.animationId = requestAnimationFrame(() => this.processFrames());
+                }
+            }
+            
+            sendFrame() {
+                // Create a temporary canvas for sending the frame
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = this.canvas.width;
+                tempCanvas.height = this.canvas.height;
+                
+                // Draw video frame to temporary canvas
+                tempCtx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                
+                // Convert to base64
+                const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
+                const base64Data = imageData.split(',')[1];
+                
+                // Send to server
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify({
+                        type: 'frame',
+                        image: base64Data
+                    }));
+                }
+            }
+            
+            handleResults(data) {
+                console.log('Received results:', data);
+                this.lastResults = data;
+                
+                // Update stats
+                if (data.timing) {
+                    this.updateStats(data);
+                }
+                
+                // Continue processing next frame immediately
+                if (this.isRunning) {
+                    this.animationId = requestAnimationFrame(() => this.processFrames());
+                }
+            }
+            
+            drawVideoFrame() {
+                if (this.video.readyState >= 2) {
+                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                }
+            }
+            
+            drawResults() {
+                // Always draw the current video frame
+                this.drawVideoFrame();
+                
+                // Draw last results if available
+                if (this.lastResults && this.lastResults.results) {
+                    const results = this.lastResults.results;
+                    console.log('Drawing results:', results.length, 'detections');
+                    
+                    // Draw detections/segmentations
+                    results.forEach((result, index) => {
+                        this.drawResult(result, index);
+                    });
+                } else {
+                    console.log('No results to draw');
+                }
+            }
+            
+            drawResult(result, index) {
+                console.log('Drawing result:', result);
+                
+                // Validate bbox data
+                if (!result.bbox || !Array.isArray(result.bbox) || result.bbox.length !== 4) {
+                    console.warn('Invalid bbox data:', result.bbox);
+                    return;
+                }
+                
+                const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
+                const color = colors[index % colors.length];
+                
+                const [x1, y1, x2, y2] = result.bbox;
+                console.log('Bounding box:', x1, y1, x2, y2);
+                
+                // Draw bounding box
+                this.ctx.strokeStyle = color;
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+                
+                // Draw label with tracking info if available
+                let label = `${result.class}: ${(result.confidence * 100).toFixed(1)}%`;
+                if (result.track_id) {
+                    label = `ID:${result.track_id} ${result.class} (${(result.confidence * 100).toFixed(1)}%)`;
+                }
+                const labelHeight = 25;
+                
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(x1, y1 - labelHeight, this.ctx.measureText(label).width + 10, labelHeight);
+                
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '14px Arial';
+                this.ctx.fillText(label, x1 + 5, y1 - 8);
+                
+                // Draw tracking age if available
+                if (result.track_age) {
+                    const ageLabel = `Age: ${result.track_age}`;
+                    this.ctx.fillStyle = color;
+                    this.ctx.fillRect(x1, y2, this.ctx.measureText(ageLabel).width + 10, 20);
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.font = '12px Arial';
+                    this.ctx.fillText(ageLabel, x1 + 5, y2 + 15);
+                }
+                
+                console.log('Finished drawing result');
+            }
+            
+
+            
+            setMode(mode) {
+                this.currentMode = mode;
+                
+                // Update UI
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mode);
+                });
+                
+                // Send to server
+                fetch('/mode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode })
+                });
+            }
+            
+            addPrompt() {
+                const input = document.getElementById('promptText');
+                const prompt = input.value.trim();
+                
+                if (prompt && !this.currentPrompts.includes(prompt)) {
+                    this.currentPrompts.push(prompt);
+                    input.value = '';
+                    this.updatePromptList();
+                    this.updatePrompts();
+                }
+            }
+            
+            removePrompt(prompt) {
+                this.currentPrompts = this.currentPrompts.filter(p => p !== prompt);
+                this.updatePromptList();
+                this.updatePrompts();
+            }
+            
+            updatePromptList() {
+                const list = document.getElementById('promptList');
+                
+                if (this.currentPrompts.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; color: #666; font-style: italic;">No prompts added. Add some to start detection!</div>';
+                } else {
+                    list.innerHTML = this.currentPrompts.map(prompt => `
+                        <div class="prompt-item">
+                            <span class="prompt-text">${prompt}</span>
+                            <button class="btn btn-danger" onclick="app.removePrompt('${prompt}')" style="padding: 2px 6px; font-size: 12px;">×</button>
+                        </div>
+                    `).join('');
+                }
+            }
+            
+            updatePrompts() {
+                fetch('/prompts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompts: this.currentPrompts })
+                });
+            }
+            
+            updateSettings() {
+                const settings = {
+                    confidence_threshold: parseFloat(document.getElementById('confidenceSlider').value),
+                    similarity_threshold: parseFloat(document.getElementById('similaritySlider').value),
+                    apply_filtering: document.getElementById('filteringCheckbox').checked,
+                    tracking_enabled: document.getElementById('trackingCheckbox').checked
+                };
+                
+                fetch('/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+            }
+            
+            updateConnectionStatus(connected) {
+                const status = document.getElementById('connectionStatus');
+                if (connected) {
+                    status.textContent = 'Connected';
+                    status.className = 'status connected';
+                } else {
+                    status.textContent = 'Disconnected';
+                    status.className = 'status disconnected';
+                }
+            }
+            
+            updateStats(data) {
+                this.stats.frameCount++;
+                
+                if (data.timing) {
+                    const total = Object.values(data.timing).reduce((a, b) => a + b, 0);
+                    this.stats.processingTime = total;
+                    this.stats.fps = total > 0 ? 1 / total : 0;
+                }
+                
+                if (data.results) {
+                    this.stats.detectionCount = data.results.length;
+                }
+                
+                // Add tracking stats if available
+                let trackingInfo = '';
+                if (data.timing && data.timing.tracking) {
+                    const tracking = data.timing.tracking;
+                    trackingInfo = `
+Tracking Stats:
+Active Tracks: ${tracking.active_tracks || 0}
+Total Created: ${tracking.total_tracks || 0}
+Avg Lifetime: ${tracking.avg_track_lifetime ? tracking.avg_track_lifetime.toFixed(1) : 0} frames
+                    `.trim();
+                }
+                
+                const statsText = `
+Frame: ${this.stats.frameCount}
+FPS: ${this.stats.fps.toFixed(1)}
+Process Time: ${(this.stats.processingTime * 1000).toFixed(0)}ms
+Detections: ${this.stats.detectionCount}
+
+Timing Breakdown:
+${data.timing ? Object.entries(data.timing)
+    .filter(([key]) => key !== 'tracking')
+    .map(([key, value]) => `${key}: ${(value * 1000).toFixed(0)}ms`)
+    .join('\n') : 'No timing data'}
+
+${trackingInfo}
+                `.trim();
+                
+                document.getElementById('stats').textContent = statsText;
+            }
+            
+            updateUI() {
+                this.updatePromptList();
+            }
+        }
+        
+        // Initialize app
+        const app = new OVODApp();
+    </script>
+</body>
+</html> 
