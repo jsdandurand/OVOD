@@ -1,1 +1,1 @@
-# ML package for OVOD models 
+# ML package for ClipTracker models 

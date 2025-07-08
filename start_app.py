@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Startup script for OVOD Real-time Webcam Application
+Startup script for ClipTracker Real-time Webcam Application
 """
 
 import os
@@ -15,8 +15,8 @@ def check_requirements():
         import fastapi
         import uvicorn
         import websockets
-        from ml.ovod_detection import OVODDetector
-        from ml.ovod_segmentation import OVODSegmenter
+        from ml.clip_detection import ClipDetector
+        from ml.clip_segmentation import ClipSegmenter
         print("✓ All dependencies are installed")
         return True
     except ImportError as e:
@@ -29,8 +29,8 @@ def check_files():
     required_files = [
         "app/app_server.py", 
         "app/app_frontend.html",
-        "ml/ovod_detection.py",
-        "ml/ovod_segmentation.py"
+        "ml/clip_detection.py",
+        "ml/clip_segmentation.py"
     ]
     missing_files = []
     
@@ -46,8 +46,8 @@ def check_files():
     return True
 
 def main():
-    """Start the OVOD webcam application."""
-    print("🎯 OVOD Real-time Webcam Application")
+    """Start the ClipTracker webcam application."""
+    print("🎯 ClipTracker Real-time Webcam Application")
     print("=" * 50)
     
     # Check requirements
@@ -88,7 +88,7 @@ def main():
         )
         
     except KeyboardInterrupt:
-        print("\n\n👋 Server stopped. Thank you for using OVOD!")
+        print("\n\n👋 Server stopped. Thank you for using ClipTracker!")
     except Exception as e:
         print(f"\n❌ Error starting server: {e}")
         print("Make sure port 8000 is available and try again.")

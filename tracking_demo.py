@@ -1,5 +1,5 @@
 """
-Tracking Demo Script for OVOD
+Tracking Demo Script for ClipTracker
 Processes video files with object detection and tracking, showing track IDs and motion.
 """
 
@@ -11,12 +11,12 @@ import time
 import argparse
 from tqdm import tqdm
 try:
-    from .ml.ovod_detection import OVODDetector
-    from .ml.tracker import OVODTracker
+    from .ml.clip_detection import ClipDetector
+    from .ml.tracker import ClipTracker
 except ImportError:
     # Fallback for direct script execution
-    from ml.ovod_detection import OVODDetector
-    from ml.tracker import OVODTracker
+    from ml.clip_detection import ClipDetector
+    from ml.tracker import ClipTracker
 
 
 def process_video_with_tracking(video_path: str, text_queries, output_path: str):
@@ -26,9 +26,9 @@ def process_video_with_tracking(video_path: str, text_queries, output_path: str)
         text_queries = [text_queries]
     
     # Initialize detector and tracker once
-    print("Initializing OVOD Detector and Tracker...")
-    detector = OVODDetector()
-    tracker = OVODTracker(
+    print("Initializing ClipTracker Detector and Tracker...")
+    detector = ClipDetector()
+    tracker = ClipTracker(
         max_age=30,
         min_hits=3,
         iou_threshold=0.3,
@@ -82,10 +82,12 @@ def process_video_with_tracking(video_path: str, text_queries, output_path: str)
             detection_start = time.time()
             boxes, scores, similarities, classes = detector.detect(
                 pil_image, text_queries, 
-                confidence_threshold=0.3,
-                similarity_threshold=0.23,
+                confidence_threshold=0.1,
+                similarity_threshold=0.25,
                 verbose=False,
-                iou_threshold=0.2
+                apply_nms=True,
+                use_weighted_scoring=False,
+                iou_threshold=0.5
             )
             detection_time = time.time() - detection_start
             
@@ -217,7 +219,7 @@ def visualize_tracking(frame, tracked_objects, text_queries):
 
 def main():
     """Main function to run tracking demo."""
-    parser = argparse.ArgumentParser(description="OVOD Tracking Demo")
+    parser = argparse.ArgumentParser(description="ClipTracker Tracking Demo")
     parser.add_argument("video_path", help="Path to input video file")
     parser.add_argument("text_queries", nargs="+", help="Text queries to search for")
     parser.add_argument("--output", "-o", default="output_videos/tracking_demo.mp4", 

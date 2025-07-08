@@ -1,6 +1,6 @@
 """
-Real-time OVOD Server for Webcam Object Detection/Segmentation
-Hosts the OVOD models and provides REST API for frame processing.
+Real-time ClipTracker Server for Webcam Object Detection/Segmentation
+Hosts the ClipTracker models and provides REST API for frame processing.
 """
 
 import asyncio
@@ -17,12 +17,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 import uvicorn
 
-from ml.ovod_detection import OVODDetector
-from ml.tracker import OVODTracker
+from ml.clip_detection import ClipDetector
+from ml.tracker import ClipTracker
 
 
-class OVODServer:
-    """Server class that manages OVOD models and processing."""
+class ClipTrackerServer:
+    """Server class that manages ClipTracker models and processing."""
     
     def __init__(self):
         self.detector = None
@@ -38,17 +38,17 @@ class OVODServer:
         self.apply_filtering = True
         
     async def initialize_models(self):
-        """Initialize OVOD models (async to avoid blocking)."""
-        print("Initializing OVOD models...")
+        """Initialize ClipTracker models (async to avoid blocking)."""
+        print("Initializing ClipTracker models...")
         # Initialize in separate thread to avoid blocking
         loop = asyncio.get_event_loop()
         
         # Initialize detector
-        self.detector = await loop.run_in_executor(None, OVODDetector)
+        self.detector = await loop.run_in_executor(None, ClipDetector)
         print("Detection model loaded!")
         
         # Initialize tracker
-        self.tracker = await loop.run_in_executor(None, OVODTracker)
+        self.tracker = await loop.run_in_executor(None, ClipTracker)
         print("Tracking system loaded!")
         
     def set_prompts(self, prompts: List[str]):
@@ -115,6 +115,7 @@ class OVODServer:
             confidence_threshold=self.confidence_threshold,
             similarity_threshold=self.similarity_threshold,
             iou_threshold=0.001,
+            apply_nms=self.apply_filtering,
             verbose=False,
             timing_dict=timing_dict
         )
@@ -144,6 +145,7 @@ class OVODServer:
             confidence_threshold=self.confidence_threshold,
             similarity_threshold=self.similarity_threshold,
             iou_threshold=0.001,
+            apply_nms=self.apply_filtering,
             verbose=False,
             timing_dict=timing_dict
         )
@@ -191,10 +193,10 @@ class OVODServer:
 
 
 # Global server instance
-ovod_server = OVODServer()
+cliptracker_server = ClipTrackerServer()
 
 # FastAPI app
-app = FastAPI(title="OVOD Real-time Server", version="1.0.0")
+app = FastAPI(title="ClipTracker Real-time Server", version="1.0.0")
 
 # CORS middleware for web frontend
 app.add_middleware(
@@ -211,7 +213,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize models on startup."""
-    await ovod_server.initialize_models()
+    await cliptracker_server.initialize_models()
 
 
 @app.get("/")
@@ -227,8 +229,8 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "models_loaded": ovod_server.detector is not None and ovod_server.tracker is not None,
-        "processing": ovod_server.processing
+        "models_loaded": cliptracker_server.detector is not None and cliptracker_server.tracker is not None,
+        "processing": cliptracker_server.processing
     }
 
 
@@ -236,29 +238,29 @@ async def health_check():
 async def update_prompts(data: Dict[str, List[str]]):
     """Update text prompts."""
     prompts = data.get("prompts", [])
-    ovod_server.set_prompts(prompts)
-    return {"status": "success", "prompts": ovod_server.current_prompts}
+    cliptracker_server.set_prompts(prompts)
+    return {"status": "success", "prompts": cliptracker_server.current_prompts}
 
 
 @app.post("/mode")
 async def update_mode(data: Dict[str, str]):
     """Switch between detection and segmentation mode."""
     mode = data.get("mode", "detection")
-    ovod_server.set_mode(mode)
-    return {"status": "success", "mode": ovod_server.mode}
+    cliptracker_server.set_mode(mode)
+    return {"status": "success", "mode": cliptracker_server.mode}
 
 
 @app.post("/settings")
 async def update_settings(data: Dict[str, Any]):
     """Update detection settings."""
-    ovod_server.set_settings(data)
+    cliptracker_server.set_settings(data)
     return {
         "status": "success", 
         "settings": {
-            "confidence_threshold": ovod_server.confidence_threshold,
-            "similarity_threshold": ovod_server.similarity_threshold,
-            "apply_filtering": ovod_server.apply_filtering,
-            "tracking_enabled": ovod_server.tracking_enabled
+            "confidence_threshold": cliptracker_server.confidence_threshold,
+            "similarity_threshold": cliptracker_server.similarity_threshold,
+            "apply_filtering": cliptracker_server.apply_filtering,
+            "tracking_enabled": cliptracker_server.tracking_enabled
         }
     }
 
@@ -280,7 +282,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 image = Image.open(io.BytesIO(image_data)).convert('RGB')
                 
                 # Process frame
-                results = await ovod_server.process_frame(image)
+                results = await cliptracker_server.process_frame(image)
                 
                 # Send results back
                 await websocket.send_text(json.dumps({
@@ -304,7 +306,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 if __name__ == "__main__":
-    print("Starting OVOD Real-time Server...")
+    print("Starting ClipTracker Real-time Server...")
     print("Open http://localhost:8000 in your browser")
     
     uvicorn.run(

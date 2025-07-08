@@ -1,5 +1,5 @@
 """
-Multi-Object Tracking System for OVOD
+Multi-Object Tracking System for ClipTracker
 Implements SORT (Simple Online and Realtime Tracking) with enhancements
 """
 
@@ -102,7 +102,8 @@ class SORTTracker:
                  iou_threshold: float = 0.3,
                  feature_similarity_threshold: float = 0.7,
                  max_displacement: float = 1000.0,
-                 velocity_scale: float = 1.0):
+                 velocity_scale: float = 1.0,
+                 lost_track_duration: int = 15):
         """
         Initialize SORT tracker.
         
@@ -113,6 +114,7 @@ class SORTTracker:
             feature_similarity_threshold: Feature similarity threshold for association
             max_displacement: Maximum expected displacement between frames (pixels)
             velocity_scale: Scale factor for velocity prediction (higher = more aggressive)
+            lost_track_duration: Number of frames to show lost tracks (prevents flickering)
         """
         self.max_age = max_age
         self.min_hits = min_hits
@@ -120,6 +122,7 @@ class SORTTracker:
         self.feature_similarity_threshold = feature_similarity_threshold
         self.max_displacement = max_displacement
         self.velocity_scale = velocity_scale
+        self.lost_track_duration = lost_track_duration
         
         self.tracks: List[Track] = []
         self.frame_count = 0
@@ -247,6 +250,11 @@ class SORTTracker:
                 if track.age > 1:  # Only after first update
                     # Scale velocity components for better fast motion prediction
                     velocity = track.kalman_filter.x[4:] * self.velocity_scale
+                    
+                    # For lost tracks, use more conservative velocity scaling
+                    # if track.state == TrackState.LOST:
+                    #     velocity *= 0.5  # Reduce velocity for lost tracks
+                    
                     predicted_bbox[:2] += velocity[:2]  # x1, y1
                     predicted_bbox[2:] += velocity[2:]  # x2, y2
                 
@@ -464,11 +472,24 @@ class SORTTracker:
         active_tracks = []
         
         for track in self.tracks:
-            # Only return tracks that have been confirmed (enough hits)
-            if track.state in [TrackState.TRACKED, TrackState.NEW] and track.hits >= self.min_hits:
+            # Include tracks that are confirmed (enough hits) AND either active or recently lost
+            is_confirmed = track.hits >= self.min_hits
+            is_active = track.state in [TrackState.TRACKED, TrackState.NEW]
+            is_recently_lost = (track.state == TrackState.LOST and 
+                              track.time_since_update <= self.lost_track_duration)
+            
+            # Only show tracks that have enough hits AND are either active or recently lost
+            if is_confirmed and (is_active or is_recently_lost):
+                # For LOST tracks, use Kalman filter prediction if available
+                bbox = track.bbox
+                if track.state == TrackState.LOST and track.kalman_filter is not None:
+                    # Use predicted bbox for lost tracks to maintain smooth tracking
+                    predicted_bbox = track.kalman_filter.predict()
+                    bbox = predicted_bbox
+                
                 active_tracks.append({
                     'id': track.id,
-                    'bbox': track.bbox.tolist(),
+                    'bbox': bbox.tolist(),
                     'class': track.class_name,
                     'confidence': track.confidence,
                     'state': track.state.value,
@@ -498,17 +519,18 @@ class SORTTracker:
         }
 
 
-class OVODTracker:
-    """High-level tracker interface for OVOD system."""
+class ClipTracker:
+    """High-level tracker interface for ClipTracker system."""
     
     def __init__(self, 
                  max_age: int = 30,
-                 min_hits: int = 3,
+                 min_hits: int = 5,
                  iou_threshold: float = 0.3,
                  max_displacement: float = 1000.0,
-                 velocity_scale: float = 1.2):
+                 velocity_scale: float = 1.2,
+                 lost_track_duration: int = 5):
         """
-        Initialize OVOD tracker.
+        Initialize ClipTracker tracker.
         
         Args:
             max_age: Maximum frames to keep track without updates
@@ -516,13 +538,15 @@ class OVODTracker:
             iou_threshold: IoU threshold for track-detection association
             max_displacement: Maximum expected displacement between frames (pixels)
             velocity_scale: Scale factor for velocity prediction (higher = more aggressive)
+            lost_track_duration: Number of frames to show lost tracks (prevents flickering)
         """
         self.tracker = SORTTracker(
             max_age=max_age,
             min_hits=min_hits,
             iou_threshold=iou_threshold,
             max_displacement=max_displacement,
-            velocity_scale=velocity_scale
+            velocity_scale=velocity_scale,
+            lost_track_duration=lost_track_duration
         )
         self.frame_count = 0
         self.tracking_history = {}  # Track history for visualization
@@ -532,14 +556,14 @@ class OVODTracker:
         Update tracker with new detections.
         
         Args:
-            detections: List of detection dictionaries from OVOD detector
+            detections: List of detection dictionaries from ClipTracker detector
         
         Returns:
             List of tracked objects with additional tracking information
         """
         self.frame_count += 1
         
-        # Convert OVOD detections to tracker format
+        # Convert ClipTracker detections to tracker format
         tracker_detections = []
         for det in detections:
             tracker_det = {
@@ -624,8 +648,8 @@ class OVODTracker:
 
 # Example usage and testing
 if __name__ == "__main__":
-    # Test the tracker
-    tracker = OVODTracker()
+    # Test the tracker with improved lost track handling
+    tracker = ClipTracker(lost_track_duration=10)
     
     # Simulate some detections
     detections = [
@@ -635,7 +659,18 @@ if __name__ == "__main__":
     
     # Update tracker
     tracked_objects = tracker.update(detections)
-    print(f"Tracked objects: {tracked_objects}")
+    print(f"Frame 1 - Tracked objects: {len(tracked_objects)}")
+    
+    # Simulate frame with no detections (object temporarily lost)
+    tracked_objects = tracker.update([])
+    print(f"Frame 2 - Lost objects still tracked: {len(tracked_objects)}")
+    
+    # Simulate object reappearing
+    detections = [
+        {'bbox': [110, 110, 210, 210], 'class': 'person', 'confidence': 0.9}
+    ]
+    tracked_objects = tracker.update(detections)
+    print(f"Frame 3 - Object reappeared: {len(tracked_objects)}")
     
     # Get metrics
     metrics = tracker.get_metrics()

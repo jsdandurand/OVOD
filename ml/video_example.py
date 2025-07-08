@@ -1,5 +1,5 @@
 """
-Example of using OVOD classes for video processing.
+Example of using ClipTracker classes for video processing.
 This demonstrates the benefit of the class-based approach where models are loaded once
 and reused across multiple frames.
 """
@@ -7,8 +7,8 @@ and reused across multiple frames.
 import cv2
 import numpy as np
 from PIL import Image
-from .ovod_detection import OVODDetector
-from .ovod_segmentation import OVODSegmenter
+from .clip_detection import ClipDetector
+from .clip_segmentation import ClipSegmenter
 import os
 import time
 from tqdm import tqdm
@@ -16,14 +16,14 @@ from tqdm import tqdm
 
 def process_video_detection(video_path: str, text_queries, output_path: str, 
                            sample_rate: int = 30):
-    """Process video for object detection using OVOD and save as video."""
+    """Process video for object detection using ClipTracker and save as video."""
     # Convert single query to list for uniform handling
     if isinstance(text_queries, str):
         text_queries = [text_queries]
     
     # Initialize detector once (models loaded here)
-    print("Initializing OVOD Detector...")
-    detector = OVODDetector()
+    print("Initializing ClipTracker Detector...")
+    detector = ClipDetector()
     
     # Open input video
     cap = cv2.VideoCapture(video_path)
@@ -154,7 +154,7 @@ def process_video_detection(video_path: str, text_queries, output_path: str,
 
 def process_video_segmentation(video_path: str, text_queries, output_path: str, 
                               sample_rate: int = 30, apply_filtering: bool = True):
-    """Process video for instance segmentation using OVOD and save as video.
+    """Process video for instance segmentation using ClipTracker and save as video.
     
     Args:
         apply_filtering: Whether to apply full filtering (NMS, merging, top-k) or just similarity threshold
@@ -164,8 +164,8 @@ def process_video_segmentation(video_path: str, text_queries, output_path: str,
         text_queries = [text_queries]
     
     # Initialize segmenter once (models loaded here)
-    print("Initializing OVOD Segmenter...")
-    segmenter = OVODSegmenter()
+    print("Initializing ClipTracker Segmenter...")
+    segmenter = ClipSegmenter()
     
     # Open input video
     cap = cv2.VideoCapture(video_path)
@@ -299,18 +299,18 @@ def process_video_segmentation(video_path: str, text_queries, output_path: str,
 
 
 def batch_process_images(image_dir: str, text_queries, output_dir: str, mode: str = "detection"):
-    """Process a batch of images efficiently using OVOD classes."""
+    """Process a batch of images efficiently using ClipTracker classes."""
     # Convert single query to list for uniform handling
     if isinstance(text_queries, str):
         text_queries = [text_queries]
     
     if mode == "detection":
-        processor = OVODDetector()
+        processor = ClipDetector()
         process_func = processor.detect
         viz_func = processor.visualize_detections
         ext = ".jpg"
     else:  # segmentation
-        processor = OVODSegmenter()
+        processor = ClipSegmenter()
         process_func = processor.segment
         viz_func = processor.visualize_segmentations
         ext = ".png"
@@ -424,7 +424,7 @@ def main():
     #     print("\nRunning single and multi-class image examples...")
         
     #     # Single-class detection example
-    #     detector = OVODDetector()
+    #     detector = ClipDetector()
     #     image = Image.open("data/object_detection/cat.jpg").convert('RGB')
     #     boxes, scores, similarities, classes = detector.detect(image, "cat")
     #     print(f"Single-class detection found {len(boxes)} objects")
@@ -434,7 +434,7 @@ def main():
     #     print(f"Multi-class detection found {len(boxes)} objects across {len(set(classes))} classes")
         
     #     # Single-class segmentation example
-    #     segmenter = OVODSegmenter()
+    #     segmenter = ClipSegmenter()
     #     boxes, scores, masks, similarities, classes = segmenter.segment(image, "cat", use_mask_iou=True)
     #     print(f"Single-class segmentation found {len(boxes)} objects")
         

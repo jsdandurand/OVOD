@@ -1,1 +1,1 @@
-# App package for OVOD web application 
+# App package for ClipTracker web application 

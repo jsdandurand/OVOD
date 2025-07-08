@@ -1,4 +1,4 @@
-# 🎯 OVOD: Open Vocabulary Object Detection & Tracking
+# 🎯 ClipTracker: Open Vocabulary Object Detection & Tracking
 
 A real-time computer vision system that performs object detection, segmentation, and multi-object tracking using natural language descriptions. Built with state-of-the-art deep learning models and optimized for live webcam inference.
 
@@ -36,7 +36,7 @@ The system implements **SORT (Simple Online and Realtime Tracking)** with enhanc
 
 ## 🎬 Demo Video
 
-![Tracking Demo](examples/dog_track.mp4)
+![Tracking Demo](examples/horse_track_github.mp4)
 
 *Multi-object tracking demonstration showing persistent object IDs across frames, even during fast motion and temporary occlusions.*
 
@@ -90,8 +90,8 @@ Open browser to `http://localhost:8000` and start detecting objects with natural
 ```
 ├── start_app.py          # Application launcher
 ├── ml/                   # Machine learning models
-│   ├── ovod_detection.py
-│   ├── ovod_segmentation.py
+│   ├── clip_detection.py
+│   ├── clip_segmentation.py
 │   └── tracker.py        # Multi-object tracking system
 ├── app/                  # Web application
 │   ├── app_server.py     # FastAPI backend
