@@ -107,9 +107,5 @@ Open browser to `http://localhost:8000` and start detecting objects with natural
 - **Real-time Processing**: Optimized inference pipeline for live video
 - **Robust Tracking**: Handles fast motion, occlusion, and blur
 - **Scalable Architecture**: Modular design with async processing
-- **Cross-platform**: Runs on CPU/GPU with automatic device detection
-- **Production-ready**: Professional web interface with error handling
 
 ---
-
-*Built with modern ML engineering practices and optimized for real-world deployment.* 
