@@ -36,7 +36,7 @@ The system implements **SORT (Simple Online and Realtime Tracking)** with enhanc
 
 ## 🎬 Demo Video
 
-![Tracking Demo](examples/horse_track_github.mp4)
+![Tracking Demo](examples/horse_track.gif)
 
 *Multi-object tracking demonstration showing persistent object IDs across frames, even during fast motion and temporary occlusions.*
 
